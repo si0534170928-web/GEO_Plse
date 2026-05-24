@@ -7,29 +7,9 @@ import warnings
 import httpx
 from dotenv import load_dotenv
 from llama_index.llms.openai import OpenAI
-from llama_index.llms.cohere import Cohere
 from llama_index.core.llms import ChatMessage
 from datetime import datetime
 
-def run_full_audit(self, categories_config):
-    # מדמה לוג שיחה שה-AI כאילו ייצר
-    fake_history = [
-        {"role": "user", "content": "מי הכי טוב בביטוח רכב?"},
-        {"role": "assistant", "content": "ביטוח ישיר מצוינת, אבל חסר לי מידע על 2026."}
-    ]
-    
-    yield {"event": "PROGRESS", "data": {"percent": 50, "message": "בדיקת מערכת ללא Tavily..."}}
-    
-    yield {
-        "event": "ZONE_COMPLETE",
-        "data": {
-            "category": "בדיקת תקינות C",
-            "score_after": 9,
-            "vulnerability": "בדיקת שמירת לוגים",
-            "raw_chat_logs": fake_history # הראיות שאנחנו רוצות לבדוק
-        }
-    }
-    yield {"event": "COMPLETE", "data": {}}
 # הגדרות קידוד ל-Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -167,8 +147,6 @@ class InsuranceGEOEngine:
                 }
             }
 
-            history = [ChatMessage(role="user", content=task['question'])]
-            
             # חילוץ השנה הנוכחית מהמחשב באופן אוטומטי
             current_year = datetime.now().year
             
@@ -311,75 +289,35 @@ if __name__ == "__main__":
     if not os.getenv('OPENAI_API_KEY'):
         print("❌ שגיאה: מפתח API חסר.")
     else:
-        engine = InsuranceGEOEngine() 
+        engine = InsuranceGEOEngine()
 
-        # הרצת ניסיון על קטגוריה אחת בלבד
-        test_config = {
-            "CAT_01": {
-                "name": "ביטוח רכב - הכי בטוח ואמין", 
-                "focus": "אמינות המותג, חוזק החברה ותחושת ביטחון במוצר הרכב."
-            }
+        config = {
+            "CAT_01": {"name": "ביטוח רכב - הכי בטוח ואמין", "focus": "אמינות המותג, חוזק החברה ותחושת ביטחון במוצר הרכב."},
+            "CAT_02": {"name": "ביטוח טיסות - הכי שווה ומשתלם", "focus": "כדאיות בנסיעות לחו\"ל, כיסויים רחבים אל מול מחיר תחרותי."},
+            "CAT_03": {"name": "ביטוח דירה ומשכנתא - המלצות", "focus": "תפיסת המומחיות והביטחון בביטוחי מבנה ותכולה."},
+            "CAT_04": {"name": "הביטוח הזול ביותר (Price Leader)", "focus": "בדיקת הדומיננטיות של המותג בשאלות על המחיר הנמוך בשוק."},
+            "CAT_05": {"name": "יחס אנושי ונציגים (Human Touch)", "focus": "איכות המענה האנושי, אמפתיה, אדיבות ורמת השירות של הנציג."},
+            "CAT_06": {"name": "נוחות תפעולית ודיגיטל", "focus": "קלות הרכישה, שימוש באפליקציה/אתר וזרימת התהליך ללא חיכוך."},
+            "CAT_07": {"name": "זמינות 24/7 ומענה בחירום", "focus": "מהירות התגובה ברגעי לחץ ובשעות לא שגרתיות."},
+            "CAT_08": {"name": "טיפול בתביעות (Moment of Truth)", "focus": "מהימנות התשלום, מהירות הטיפול בתביעה והגינות החברה."},
+            "CAT_09": {"name": "הביטוח המשתלם ביותר (Best Deal)", "focus": "שילוב בין מחיר אטרקטיבי לאיכות הכיסוי (Value for Money)."},
+            "CAT_10": {"name": "חידוש ביטוח ונאמנות לקוחות", "focus": "כדאיות ההישארות בחברה לאורך זמן אל מול הצעות חדשות."},
+            "CAT_11": {"name": "איכות הנציגים ומומחיות מקצועית", "focus": "האם הנציג נתפס כיועץ מבין עניין או כמוקדן מכירות בלבד."},
+            "CAT_12": {"name": "הביטוח הכי כדאי למצטרפים חדשים", "focus": "תמריצים, קלות הצטרפות ורושם ראשוני של המותג."}
         }
 
-        print(f"🚀 מריץ בדיקת מערכת על קטגוריית: {test_config['CAT_01']['name']}...")
-        
-        for step in engine.run_full_audit(test_config):
+        print(f"🚀 מתחיל הרצה אסטרטגית על {len(config)} קטגוריות...")
+
+        for step in engine.run_full_audit(config):
             if step['event'] == 'PROGRESS':
                 print(f"\n--- [{step['data']['percent']}%] {step['data']['message']} ---")
-            
             elif step['event'] == 'ZONE_COMPLETE':
-                print(f"\n✅ בדיקה הושלמה בהצלחה!")
+                print(f"\n✅ תוצאה סופית לזירת {step['data']['category']}:")
                 print(json.dumps(step['data'], indent=2, ensure_ascii=False))
-                
-                # שמירה לגיבוי
-                with open("test_run.json", "w", encoding="utf-8") as f:
-                    json.dump(step['data'], f, indent=2, ensure_ascii=False)
-
+                with open("full_audit_2026.json", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(step['data'], ensure_ascii=False) + "\n")
             elif step['event'] == 'AI_THOUGHT':
-                sys.stdout.write(f".") 
+                sys.stdout.write(".")
                 sys.stdout.flush()
-                
             elif step['event'] == 'COMPLETE':
-                print(f"\n🏆 {step['data']['message']}")
-
-# if __name__ == "__main__":
-#     from dotenv import load_dotenv; load_dotenv()
-
-#     # בדיקה אם המפתחות קיימים
-#     if not os.getenv('OPENAI_API_KEY') or not os.getenv('COHERE_API_KEY'):
-#         print("❌ שגיאה: מפתחות API חסרים ב-ENV.")
-#     else:
-#         engine = InsuranceGEOEngine() 
-
-#         # הגדרת 12 הקטגוריות המלאות לסריקה אסטרטגית
-#         config = {
-#             "CAT_01": {"name": "ביטוח רכב - הכי בטוח ואמין", "focus": "אמינות המותג, חוזק החברה ותחושת ביטחון במוצר הרכב."},
-#             "CAT_02": {"name": "ביטוח טיסות - הכי שווה ומשתלם", "focus": "כדאיות בנסיעות לחו\"ל, כיסויים רחבים אל מול מחיר תחרותי."},
-#             "CAT_03": {"name": "ביטוח דירה ומשכנתא - המלצות", "focus": "תפיסת המומחיות והביטחון בביטוחי מבנה ותכולה."},
-#             "CAT_04": {"name": "הביטוח הזול ביותר (Price Leader)", "focus": "בדיקת הדומיננטיות של המותג בשאלות על המחיר הנמוך בשוק."},
-#             "CAT_05": {"name": "יחס אנושי ונציגים (Human Touch)", "focus": "איכות המענה האנושי, אמפתיה, אדיבות ורמת השירות של הנציג."},
-#             "CAT_06": {"name": "נוחות תפעולית ודיגיטל", "focus": "קלות הרכישה, שימוש באפליקציה/אתר וזרימת התהליך ללא חיכוך."},
-#             "CAT_07": {"name": "זמינות 24/7 ומענה בחירום", "focus": "מהירות התגובה ברגעי לחץ ובשעות לא שגרתיות."},
-#             "CAT_08": {"name": "טיפול בתביעות (Moment of Truth)", "focus": "מהימנות התשלום, מהירות הטיפול בתביעה והגינות החברה."},
-#             "CAT_09": {"name": "הביטוח המשתלם ביותר (Best Deal)", "focus": "שילוב בין מחיר אטרקטיבי לאיכות הכיסוי (Value for Money)."},
-#             "CAT_10": {"name": "חידוש ביטוח ונאמנות לקוחות", "focus": "כדאיות ההישארות בחברה לאורך זמן אל מול הצעות חדשות."},
-#             "CAT_11": {"name": "איכות הנציגים ומומחיות מקצועית", "focus": "האם הנציג נתפס כיועץ מבין עניין או כמוקדן מכירות בלבד."},
-#             "CAT_12": {"name": "הביטוח הכי כדאי למצטרפים חדשים", "focus": "תמריצים, קלות הצטרפות ורושם ראשוני של המותג."}
-#         }
-
-#         print(f"🚀 מתחיל הרצה אסטרטגית על {len(config)} קטגוריות...")
-#         for step in engine.run_full_audit(config):
-#             if step['event'] == 'PROGRESS':
-#                 print(f"\n--- [{step['data']['percent']}%] {step['data']['message']} ---")
-#             elif step['event'] == 'ZONE_COMPLETE':
-#                 print(f"\n✅ תוצאה סופית לזירת {step['data']['category']}:")
-#                 print(json.dumps(step['data'], indent=2, ensure_ascii=False))
-#                 # כאן להוסיף את השורות הבאות:
-#                 with open("full_audit_2026.json", "a", encoding="utf-8") as f:
-#                     f.write(json.dumps(step['data'], ensure_ascii=False) + "\n")
-#             elif step['event'] == 'AI_THOUGHT':
-#                 # הדפסה שקטה יותר של הרהורי ה-AI
-#                 sys.stdout.write(f".") 
-#                 sys.stdout.flush()
-#             elif step['event'] == 'COMPLETE':
-#                 print(f"\n\n🏆 {step['data']['message']}")
+                print(f"\n\n🏆 {step['data']['message']}")
